@@ -12,7 +12,7 @@ contract InterestRouter is IInterestRouter, Ownable {
     using SafeERC20 for IERC20;
 
     event Swept(address indexed token, address indexed to, uint256 amount);
-
+// @audit-medium the owner is fixed if he lost the keys then no ways to do it so always use the Ownable.transferOwnership.
     address private constant _OWNER = 0xce352181C0f0350F1687e1a44c45BC9D96ee738B;
 
     constructor() Ownable(_OWNER) {}
