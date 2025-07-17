@@ -36,10 +36,21 @@ library bauhaus {
         uint256 variant = _troveId % 4;
 
         // if (collSig == keccak256("WETH")) { // @AF
+
+    // @audit-medium
+    // @audit-severity Medium
+    // @audit-bug: keccak256(string) is case-sensitive.
+    // If `_collName` is e.g., "Wbtc" instead of "wBTC", it will route incorrectly to _img3().
+    // This leads to permanent incorrect NFT rendering in an immutable system.
         if (collSig == keccak256("wBTC") || collSig == keccak256("tBTC") || collSig == keccak256("cbBTC")) { // @AF
             return _img1(variant);
         // } else if (collSig == keccak256("wstETH")) { // @AF
-        } else if (collSig == keccak256("sUSDE") || collSig == keccak256("sUSDS") || collSig == keccak256("scrvUSD") || collSig == keccak256("sfrxUSD") || collSig == keccak256("sDAI")) { // @AF
+        }
+    // @audit-medium
+    // @audit-severity Medium
+    // @audit-bug: Same issue here. If `_collName` is "scrvUSD " or "SFRXUSD" (wrong case/whitespace),
+    // it fails to match and incorrectly renders fallback art (_img3()).
+else if (collSig == keccak256("sUSDE") || collSig == keccak256("sUSDS") || collSig == keccak256("scrvUSD") || collSig == keccak256("sfrxUSD") || collSig == keccak256("sDAI")) { // @AF
             return _img2(variant);
         } else {
             // assume rETH
