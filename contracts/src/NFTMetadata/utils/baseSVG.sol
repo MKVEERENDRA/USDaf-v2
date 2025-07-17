@@ -4,7 +4,8 @@ pragma solidity 0.8.24;
 import {svg} from "./SVG.sol";
 import {utils, LibString, numUtils} from "./Utils.sol";
 import "./FixedAssets.sol";
-
+// @audit-low add this in some functions to check the key --string memory asset = _assetReader.readAsset(key);
+// require(bytes(asset).length > 0, "baseSVG: missing asset for key");
 library baseSVG {
     // string constant GEIST = 'style="font-family: Geist" '; // @AF
     string constant GEIST = 'style="font-family: \'DM Sans\'" '; // @AF
