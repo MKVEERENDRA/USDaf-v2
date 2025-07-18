@@ -24,11 +24,17 @@ contract WbtcZapper is ZapperAsFuck {
     function _pullColl(uint256 _amount) internal override {
         uint256 collAmountInStrangeDecimals = _amount / 10 ** _DECIMALS_DIFF;
         require(collAmountInStrangeDecimals * 10 ** _DECIMALS_DIFF == _amount, "!precision");
+        // @audit-low Precision check is good, but may revert in many legit edge cases (e.g., _amount = 1e17)
+
         _WBTC.safeTransferFrom(msg.sender, address(this), collAmountInStrangeDecimals);
         IWrapper(collToken).depositFor(address(this), collAmountInStrangeDecimals);
+        // @audit-medium Return value of `depositFor` is ignored. If it returns false, funds may be stuck. Consider checking return value.
+
     }
 
     function _sendColl(address _receiver, uint256 _amount) internal override {
         IWrapper(collToken).withdrawTo(_receiver, _amount);
+        // @audit-medium Same as above: `withdrawTo` return value is ignored. Check to confirm success.
+
     }
 }
