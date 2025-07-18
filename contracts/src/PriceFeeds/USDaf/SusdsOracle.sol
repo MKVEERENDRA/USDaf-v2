@@ -5,6 +5,8 @@ import {ERC4626Oracle} from "./ERC4626Oracle.sol";
 
 contract SusdsOracle is ERC4626Oracle {
 
+    // @audit-low Heartbeat is set to 24 hours, which may be too lenient.
+    // Consider reducing it to mitigate stale price risk if the oracle stops updating.
     uint256 private constant _CL_USDS_USD_HEARTBEAT = _24_HOURS;
 
     address private constant _CL_USDS_USD_PRICE_FEED = 0xfF30586cD0F29eD462364C7e81375FC0C71219b1;
@@ -16,6 +18,6 @@ contract SusdsOracle is ERC4626Oracle {
             _CL_USDS_USD_HEARTBEAT, // heartbeat
             _SUSDS, // token
             _CL_USDS_USD_PRICE_FEED, // primary
-            address(0) // fallback
+            address(0) // fallback   // @audit-low No fallback feed; consider adding backup for redundancy
         ) {}
 }
