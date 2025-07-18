@@ -12,6 +12,8 @@ contract BTCPriceFeed is CompositePriceFeed {
     AggregatorV3Interface public constant CL_BTC_USD_PRICE_FEED = AggregatorV3Interface(0xF4030086522a5bEEa4988F8cA5B36dbC97BeE88c);
 
     constructor(
+// @audit-low Inconsistent Naming (ethUsdOracle) Can Lead to Misunderstanding
+
         address _ethUsdOracleAddress, // actually WBTC/cbBTC/tBTC --> USD oracle
         uint256 _ethUsdStalenessThreshold, // staleness threshold for ^^
         address _borrowerOperationsAddress
@@ -41,6 +43,9 @@ contract BTCPriceFeed is CompositePriceFeed {
         }
 
         // if btc/usd cl is down, just ignore it
+        // @audit-info Oracle Fallback — If BTC/USD Chainlink is down, fallback to ethUsdOracle without marking fail.
+
+
         if (exchangeRateIsDown) {
             lastGoodPrice = ethUsdPrice;
             return (ethUsdPrice, ethUsdOracleDown);
@@ -49,12 +54,16 @@ contract BTCPriceFeed is CompositePriceFeed {
         uint256 rEthUsdPrice;
 
         // If it's a redemption and canonical is within 2% of market, use the max to mitigate unwanted redemption oracle arb
+        // @audit-low Assumption: Chainlink BTC/USD price is more trustworthy than on-chain price only during redemption.
+        // In non-redemption cases, upward manipulation risk is mitigated by choosing the lower value. Could be overly conservative.
         if (
             _isRedemption
                 && _withinDeviationThreshold(ethUsdPrice, realEthUsdPrice, DEVIATION_THRESHOLD)
         ) {
             rEthUsdPrice = LiquityMath._max(ethUsdPrice, realEthUsdPrice);
         } else {
+            // @audit-medium Potential Price Suppression — Taking the min(ethUsd, realEth) may unfairly penalize depositors.
+            // A manipulated Chainlink BTC/USD feed (or a slow update) could lower the effective price used, especially outside redemptions.
             // Take the minimum of (market, canonical) in order to mitigate against upward market price manipulation.
             // Assumes a deviation between market <> canonical of >2% represents a legitimate market price difference.
             rEthUsdPrice = LiquityMath._min(ethUsdPrice, realEthUsdPrice);
