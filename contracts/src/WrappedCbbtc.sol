@@ -27,8 +27,12 @@ contract WrappedCbbtc is ERC20Wrapper {
     function depositFor(address account, uint256 amount) public override returns (bool) {
         address sender = _msgSender();
         require(sender != address(this), "ERC20Wrapper: wrapper can't deposit");
-        underlying().safeTransferFrom(sender, address(this), amount);
+     underlying().safeTransferFrom(sender, address(this), amount);
+        // @audit-medium No slippage check — assumes full amount was received; may be unsafe for fee-on-transfer tokens
+
         uint256 amountInDecimals = amount * 10 ** _DECIMALS_DIFF;
+        // @audit-medium Risk of overflow if `amount` is large; consider using `SafeMath` or checked math in future upgrades
+
         _mint(account, amountInDecimals);
         return true;
     }
@@ -39,7 +43,11 @@ contract WrappedCbbtc is ERC20Wrapper {
     function withdrawTo(address account, uint256 amount) public override returns (bool) {
         _burn(_msgSender(), amount);
         uint256 amountInDecimals = amount / 10 ** _DECIMALS_DIFF;
+        // @audit-low Possible precision loss due to truncation (division flooring)
+
         underlying().safeTransfer(account, amountInDecimals);
+        // @audit-low Same risk as in deposit — assumes transfer succeeded with full value
+
         return true;
     }
 }
