@@ -35,6 +35,11 @@ abstract contract BaseOracle is AggregatorV3Interface {
         uint256 heartbeat
     ) internal view virtual returns (bool) {
         bool stale = updatedAt + heartbeat <= block.timestamp;
+  // @audit-low - The staleness check uses `<= block.timestamp` which can be slightly inaccurate if the clock is skewed.
+        // Not a major issue, but in high-precision systems, rounding errors could matter.
+
+        // @audit-low - The condition `answer <= 0` might be overstrict for assets that can be priced near 0 due to volatility or error.
+        // Recommend: allow tighter bounds to be configurable by governance if this is used for diverse asset types.
         return stale || answer <= 0;
     }
 }
