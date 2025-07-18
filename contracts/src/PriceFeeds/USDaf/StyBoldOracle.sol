@@ -11,16 +11,26 @@ contract StyBoldOracle is ERC4626Oracle {
 
     constructor()
         ERC4626Oracle(
-            "st-yBOLD / USD", // description
-            uint256(0), // heartbeat
+            "st-yBOLD / USD",   // description
+            uint256(0),         // @audit-high: Heartbeat is set to 0 — disables staleness checks completely.
+                                // @impact: If fallback is later added, this disables auto-switching on stale data.
+                                // @recommendation: Set a non-zero heartbeat to detect stale prices if feed added later.
             _STAKED_YEARN_BOLD, // token
-            address(0), // primary
-            address(0) // fallback
+            address(0),         // @audit-high: No primary price feed — price is computed only via internal logic.
+                                // @impact: Entire price logic is dependent on convertToAssets() for both vaults.
+                                // @recommendation: Consider adding Chainlink BOLD/USD feed or backup oracle.
+            address(0)          // @audit-high: No fallback price feed configured.
+                                // @recommendation: Add a TWAP oracle, DEX price, or admin-set fallback in case convert logic fails.
         ) {
+            // @audit-ok: Non-staked yBOLD vault is stored for price composition.
             NON_STAKED_TOKEN = IERC4626(TOKEN.asset());
         }
 
-    // Assumes BOLD will always be solvent
+    /// @notice Computes st-yBOLD price using nested convertToAssets() calls.
+    /// @audit-medium: Assumes both ERC4626 vaults (st-yBOLD and yBOLD) are solvent and correctly reporting conversion ratios.
+    /// @risk: If either vault manipulates or misreports `convertToAssets()`, this oracle returns an invalid price.
+    /// @recommendation: Add sanity checks, oracles, or vault validation logic to mitigate trust assumptions.
+    /// @audit-info: Returns USD value of 1e18 st-yBOLD tokens in terms of underlying USD-backed asset.
     function latestRoundData()
         external
         view
