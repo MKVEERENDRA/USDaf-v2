@@ -30,6 +30,8 @@ contract WrappedWbtc is ERC20Wrapper {
         underlying().safeTransferFrom(sender, address(this), amount);
         uint256 amountInDecimals = amount * 10 ** _DECIMALS_DIFF;
         _mint(account, amountInDecimals);
+        // @audit-low While unlikely, consider using `SafeMath` or checked math for extra safety.
+
         return true;
     }
 
@@ -39,7 +41,11 @@ contract WrappedWbtc is ERC20Wrapper {
     function withdrawTo(address account, uint256 amount) public override returns (bool) {
         _burn(_msgSender(), amount);
         uint256 amountInDecimals = amount / 10 ** _DECIMALS_DIFF;
-        underlying().safeTransfer(account, amountInDecimals);
+ // @audit-medium Loss of precision: fractional tokens (e.g., 0.0000000001 WBTC18) are discarded.
+        // @recommendation Emit an event for the lost amount or warn users in UI about rounding behavior.
+
+        underlying().safeTransfer(account, amountInDecimals); 
+        // @audit-info Safely returns WBTC in original 8-decimal form
         return true;
     }
 }
