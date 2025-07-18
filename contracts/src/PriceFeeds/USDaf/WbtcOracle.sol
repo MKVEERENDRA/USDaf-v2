@@ -15,7 +15,8 @@ contract WbtcOracle is BaseOracle {
 
     constructor(address _fallback) BaseOracle("WBTC / USD") {
         FALLBACK_ORACLE = AggregatorV3Interface(_fallback);
-    }
+        // @audit-low Consider validating _fallback is a contract to avoid silent failure in fallback use.    
+}
 
     function latestRoundData()
         external
@@ -25,6 +26,8 @@ contract WbtcOracle is BaseOracle {
     {
         (roundId, answer, startedAt, updatedAt, answeredInRound) = getChainlinkPrice();
         if (answer == 0 && address(FALLBACK_ORACLE) != address(0)) {
+            // @audit-medium If Chainlink returns stale or zero data, fallback is used. Consider logging a warning event for transparency.
+
             (roundId, answer, startedAt, updatedAt, answeredInRound) = FALLBACK_ORACLE.latestRoundData();
         }
         return (roundId, answer, startedAt, updatedAt, answeredInRound);
@@ -42,6 +45,8 @@ contract WbtcOracle is BaseOracle {
             uint80 wbtcBtcAnsweredInRound
         ) = CL_WBTC_BTC_PRICE_FEED.latestRoundData();
         if (_isStale(wbtcBtcPrice, wbtcBtcUpdatedAt, _CL_WBTC_BTC_HEARTBEAT)) {
+            // @audit-medium Stale WBTC/BTC price causes total price to be dropped to 0. Consider differentiating between stale and 0.
+
             return (0, 0, 0, 0, 0);
         }
 
@@ -53,10 +58,13 @@ contract WbtcOracle is BaseOracle {
             uint80 btcUsdAnsweredInRound
         ) = CL_BTC_USD_PRICE_FEED.latestRoundData();
         if (_isStale(btcUsdPrice, btcUsdUpdatedAt, _CL_BTC_USD_HEARTBEAT)) {
+            // @audit-medium Stale BTC/USD price causes the oracle to return 0. This could affect integrations relying on real-time pricing.
+
             return (0, 0, 0, 0, 0);
         }
 
         int256 wbtcUsdPrice = wbtcBtcPrice * btcUsdPrice / int256(1e8);
+        // @audit-low Consider using SafeCast or additional overflow checks on multiplication/division for defense-in-depth.
 
         return
             wbtcBtcUpdatedAt < btcUsdUpdatedAt ?
