@@ -20,16 +20,24 @@ contract ZapperAsFuck is BaseZapper {
 
         // Approve WETH to BorrowerOperations
         WETH.approve(address(borrowerOperations), type(uint256).max);
+        // @audit-medium Approving `type(uint256).max` without revoke logic may allow griefing if `borrowerOperations` is compromised.
+
         // Approve coll to BorrowerOperations
         IERC20(address(collToken)).approve(address(borrowerOperations), type(uint256).max);
+        // @audit-medium Same issue as above, especially for non-upgradable tokens — consider revoking on emergency.
+
     }
 
     function openTroveWithRawETH(OpenTroveParams calldata _params) external payable returns (uint256) {
         require(msg.value == ETH_GAS_COMPENSATION, "GCZ: Wrong ETH");
+        // @audit-low Only allows exact compensation value. This is inflexible for future gas pricing changes.
+
         require(
             _params.batchManager == address(0) || _params.annualInterestRate == 0,
             "GCZ: Cannot choose interest if joining a batch"
         );
+        // @audit-low No validation on `_params.collAmount` or `_params.boldAmount` — could result in failed open.
+
 
         // Convert ETH to WETH
         WETH.deposit{value: msg.value}();
@@ -78,6 +86,8 @@ contract ZapperAsFuck is BaseZapper {
         }
 
         boldToken.transfer(msg.sender, _params.boldAmount);
+        // @audit-medium Assumes mint succeeded and enough Bold is present in contract. No check on `boldToken.balanceOf`.
+
 
         // Set add/remove managers
         _setAddManager(troveId, _params.addManager);
@@ -118,6 +128,8 @@ contract ZapperAsFuck is BaseZapper {
 
         // Send Bold
         boldToken.transfer(receiver, _boldAmount);
+        // @audit-low No error handling — transfer may fail on non-standard tokens.
+
     }
 
     function repayBold(uint256 _troveId, uint256 _boldAmount) external {
@@ -230,6 +242,7 @@ contract ZapperAsFuck is BaseZapper {
         // pull Bold for repayment
         LatestTroveData memory trove = troveManager.getLatestTroveData(_troveId);
         boldToken.transferFrom(msg.sender, address(this), trove.entireDebt);
+        // @audit-high Relies on user to send exact amount without allowance validation.
 
         borrowerOperations.closeTrove(_troveId);
 
@@ -240,6 +253,8 @@ contract ZapperAsFuck is BaseZapper {
         WETH.withdraw(ETH_GAS_COMPENSATION);
         (bool success,) = receiver.call{value: ETH_GAS_COMPENSATION}("");
         require(success, "GCZ: Sending ETH failed");
+        // @audit-low ETH send pattern can be replaced with `.transfer` for gas-limited safety.
+
     }
 
     function _pullColl(uint256 _amount) virtual internal {
@@ -269,4 +284,6 @@ contract ZapperAsFuck is BaseZapper {
         ILeverageZapper.LeverDownTroveParams calldata _params,
         uint256 _effectiveFlashLoanAmount
     ) external virtual override {}
+    // @audit-medium Stubbed flash loan entry points — must be protected or implemented to avoid misuse.
+
 }
