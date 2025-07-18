@@ -6,6 +6,9 @@ import {AggregatorV3Interface} from "../../Dependencies/AggregatorV3Interface.so
 abstract contract BaseOracle is AggregatorV3Interface {
 
     string public description;
+ // @audit-low - Constants are defined but not used within this contract.
+    // `_WAD`, `_24_HOURS`, and `_1_HOUR` may indicate dead code unless used in child contracts.
+    // Recommend: remove or ensure they are utilized in extended contracts.
 
     uint256 internal constant _WAD = 1e18;
     uint256 internal constant _24_HOURS = 86400 * 2; // actually 48 hours
