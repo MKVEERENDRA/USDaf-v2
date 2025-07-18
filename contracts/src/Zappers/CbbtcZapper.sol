@@ -23,6 +23,10 @@ contract CbbtcZapper is ZapperAsFuck {
 
     function _pullColl(uint256 _amount) internal override {
         uint256 collAmountInStrangeDecimals = _amount / 10 ** _DECIMALS_DIFF;
+  // @audit-medium Precision check: ensures no rounding loss during downscaling.
+        //               If `_amount` isn't divisible by 10^10, it reverts.
+        //               Could be a UX pain point for users.
+        // @audit-recommendation Consider using rounding or accepting minor imprecision if safe.
         require(collAmountInStrangeDecimals * 10 ** _DECIMALS_DIFF == _amount, "!precision");
         _CBBTC.safeTransferFrom(msg.sender, address(this), collAmountInStrangeDecimals);
         IWrapper(collToken).depositFor(address(this), collAmountInStrangeDecimals);
